@@ -1,1 +1,0 @@
-ALTER TABLE `faqs` MODIFY COLUMN `createdBy` int;

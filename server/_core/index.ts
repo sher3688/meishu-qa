@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { storagePut } from "../storage";
 import { initializeDemoUsers } from "../password-auth";
+import { initializeSchema } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -30,13 +31,26 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+let schemaInitialized = false;
 let demoUsersInitialized = false;
+
+async function ensureSchema() {
+  if (schemaInitialized) return;
+  schemaInitialized = true;
+  try {
+    await initializeSchema();
+    console.log("[Server] Database schema initialized");
+  } catch (error) {
+    console.error("[Server] Failed to initialize schema:", error);
+  }
+}
 
 async function ensureDemoUsers() {
   if (demoUsersInitialized) return;
   demoUsersInitialized = true;
   try {
     await initializeDemoUsers();
+    console.log("[Server] Demo users initialized");
   } catch (error) {
     console.error("[Server] Failed to initialize demo users:", error);
   }
@@ -44,9 +58,12 @@ async function ensureDemoUsers() {
 
 export function createApp(): express.Express {
   const app = express();
-  // On Vercel, lazily initialize demo users on first request
+  // On Vercel, lazily initialize schema and demo users on first request
   if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
     app.use(async (_req, _res, next) => {
+      if (!schemaInitialized) {
+        await ensureSchema();
+      }
       if (!demoUsersInitialized) {
         await ensureDemoUsers();
       }
@@ -92,13 +109,21 @@ export function createApp(): express.Express {
 }
 
 async function startServer() {
-  // Auto-initialize demo users (admin/admin123)
+  // Initialize schema and demo users
+  try {
+    await initializeSchema();
+    console.log("Database schema initialized");
+  } catch (error) {
+    console.error("Failed to initialize schema:", error);
+  }
+
   try {
     await initializeDemoUsers();
     console.log("Demo users initialized successfully");
   } catch (error) {
     console.error("Failed to initialize demo users:", error);
   }
+
   const app = createApp();
   const server = createServer(app);
 

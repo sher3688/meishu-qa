@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "pnpm build",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist/static",
-  "installCommand": "pnpm install",
+  "installCommand": "npm install --legacy-peer-deps",
   "rewrites": [
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/__manus__/(.*)", "destination": "/__manus__/$1" },

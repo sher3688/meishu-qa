@@ -80,7 +80,7 @@ export async function registerPasswordUser(
     const now = new Date();
     // 為帳密使用者生成唯一的 openId
     const openId = `password_${username}_${Date.now()}`;
-    await db
+    const insertResult = await db
       .insert(users)
       .values({
         openId: openId,
@@ -91,10 +91,9 @@ export async function registerPasswordUser(
         createdAt: now,
         updatedAt: now,
         lastSignedIn: now,
-      });
-    // 獲取新使用者的 ID
-    const newUserResult = await db.select().from(users).where(eq(users.name, username)).limit(1);
-    const newUser = newUserResult[0];
+      })
+      .returning();
+    const newUser = insertResult[0];
     if (!newUser) {
       throw new Error("Failed to create user");
     }

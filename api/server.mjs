@@ -230,52 +230,68 @@ import { z as z3 } from "zod";
 
 // server/db.ts
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 
 // drizzle/schema.ts
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
-var users = mysqlTable("qa_users", {
+import { integer, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
+var users = pgTable("qa_users", {
   /**
    * Surrogate primary key. Auto-incremented numeric value managed by the database.
    * Use this for relations between tables.
    */
-  id: int("id").autoincrement().primaryKey(),
+  id: integer("id").generatedAlwaysAsIdentity({ startWith: 1, increment: 1 }).primaryKey(),
   /** Identifier (openId for OAuth, or synthetic for password auth). Unique per user. */
   openId: varchar("openId", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 64 }).notNull(),
   email: varchar("email", { length: 255 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  isActive: int("isActive").default(1).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull()
+  role: varchar("role", { length: 64 }).default("user").notNull(),
+  isActive: integer("isActive").default(1).notNull(),
+  createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn", { mode: "date" }).defaultNow().notNull()
 });
-var passwordUsers = mysqlTable("qa_password_users", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
+var passwordUsers = pgTable("qa_password_users", {
+  id: integer("id").generatedAlwaysAsIdentity({ startWith: 1, increment: 1 }).primaryKey(),
+  userId: integer("userId").notNull().unique(),
   passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
+  createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull()
 });
-var faqs = mysqlTable("qa_faqs", {
-  id: int("id").autoincrement().primaryKey(),
+var faqs = pgTable("qa_faqs", {
+  id: integer("id").generatedAlwaysAsIdentity({ startWith: 1, increment: 1 }).primaryKey(),
   question: text("question").notNull(),
   answer: text("answer").notNull(),
   category: varchar("category", { length: 64 }).notNull(),
   imageUrls: text("imageUrls"),
   // JSON array of image URLs
-  createdBy: int("createdBy"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
+  createdBy: integer("createdBy"),
+  createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull()
 });
 
 // server/db.ts
+var _pool = null;
 var _db = null;
+function getPool() {
+  if (!_pool) {
+    _pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 5,
+      idleTimeoutMillis: 3e4
+    });
+    _pool.on("error", (err) => {
+      console.error("[Database] Unexpected pool error:", err);
+    });
+  }
+  return _pool;
+}
 async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle(getPool());
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -312,8 +328,8 @@ async function createFAQ(data) {
     return null;
   }
   try {
-    const result = await db.insert(faqs).values(data);
-    return result;
+    const result = await db.insert(faqs).values(data).returning();
+    return result[0];
   } catch (error) {
     console.error("[Database] Failed to create FAQ:", error);
     throw error;
@@ -326,8 +342,8 @@ async function updateFAQ(id, data) {
     return null;
   }
   try {
-    const result = await db.update(faqs).set(data).where(eq(faqs.id, id));
-    return result;
+    const result = await db.update(faqs).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where(eq(faqs.id, id)).returning();
+    return result[0];
   } catch (error) {
     console.error("[Database] Failed to update FAQ:", error);
     throw error;
@@ -340,11 +356,56 @@ async function deleteFAQ(id) {
     return null;
   }
   try {
-    const result = await db.delete(faqs).where(eq(faqs.id, id));
-    return result;
+    const result = await db.delete(faqs).where(eq(faqs.id, id)).returning();
+    return result[0];
   } catch (error) {
     console.error("[Database] Failed to delete FAQ:", error);
     throw error;
+  }
+}
+async function initializeSchema() {
+  const pool = getPool();
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS qa_users (
+        id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        "openId" VARCHAR(255) NOT NULL UNIQUE,
+        name VARCHAR(64) NOT NULL,
+        email VARCHAR(255),
+        "loginMethod" VARCHAR(64),
+        role VARCHAR(64) DEFAULT 'user' NOT NULL,
+        "isActive" INTEGER DEFAULT 1 NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT NOW() NOT NULL,
+        "updatedAt" TIMESTAMP DEFAULT NOW() NOT NULL,
+        "lastSignedIn" TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS qa_password_users (
+        id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        "userId" INTEGER NOT NULL UNIQUE,
+        "passwordHash" VARCHAR(255) NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT NOW() NOT NULL,
+        "updatedAt" TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS qa_faqs (
+        id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        question TEXT NOT NULL,
+        answer TEXT NOT NULL,
+        category VARCHAR(64) NOT NULL,
+        "imageUrls" TEXT,
+        "createdBy" INTEGER,
+        "createdAt" TIMESTAMP DEFAULT NOW() NOT NULL,
+        "updatedAt" TIMESTAMP DEFAULT NOW() NOT NULL
+      )
+    `);
+    console.log("[Database] Schema initialized successfully");
+    return true;
+  } catch (error) {
+    console.error("[Database] Schema initialization failed:", error);
+    return false;
   }
 }
 
@@ -465,7 +526,7 @@ async function registerPasswordUser(username, password, name, email, role = "use
     }
     const now = /* @__PURE__ */ new Date();
     const openId = `password_${username}_${Date.now()}`;
-    await db.insert(users).values({
+    const insertResult = await db.insert(users).values({
       openId,
       name: username,
       email,
@@ -474,9 +535,8 @@ async function registerPasswordUser(username, password, name, email, role = "use
       createdAt: now,
       updatedAt: now,
       lastSignedIn: now
-    });
-    const newUserResult = await db.select().from(users).where(eq2(users.name, username)).limit(1);
-    const newUser = newUserResult[0];
+    }).returning();
+    const newUser = insertResult[0];
     if (!newUser) {
       throw new Error("Failed to create user");
     }
@@ -735,7 +795,6 @@ import path2 from "path";
 import { createServer as createViteServer } from "vite";
 
 // vite.config.ts
-import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import fs from "node:fs";
@@ -849,7 +908,7 @@ function vitePluginManusDebugCollector() {
     }
   };
 }
-var plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+var plugins = [react(), tailwindcss(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
 var vite_config_default = defineConfig({
   plugins,
   resolve: {
@@ -997,12 +1056,24 @@ async function findAvailablePort(startPort = 3e3) {
   }
   throw new Error(`No available port found starting from ${startPort}`);
 }
+var schemaInitialized = false;
 var demoUsersInitialized = false;
+async function ensureSchema() {
+  if (schemaInitialized) return;
+  schemaInitialized = true;
+  try {
+    await initializeSchema();
+    console.log("[Server] Database schema initialized");
+  } catch (error) {
+    console.error("[Server] Failed to initialize schema:", error);
+  }
+}
 async function ensureDemoUsers() {
   if (demoUsersInitialized) return;
   demoUsersInitialized = true;
   try {
     await initializeDemoUsers();
+    console.log("[Server] Demo users initialized");
   } catch (error) {
     console.error("[Server] Failed to initialize demo users:", error);
   }
@@ -1011,6 +1082,9 @@ function createApp() {
   const app = express2();
   if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
     app.use(async (_req, _res, next) => {
+      if (!schemaInitialized) {
+        await ensureSchema();
+      }
       if (!demoUsersInitialized) {
         await ensureDemoUsers();
       }
@@ -1046,6 +1120,12 @@ function createApp() {
   return app;
 }
 async function startServer() {
+  try {
+    await initializeSchema();
+    console.log("Database schema initialized");
+  } catch (error) {
+    console.error("Failed to initialize schema:", error);
+  }
   try {
     await initializeDemoUsers();
     console.log("Demo users initialized successfully");

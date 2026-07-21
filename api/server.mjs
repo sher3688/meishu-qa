@@ -9,8 +9,8 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 // server/_core/env.ts
 var ENV = {
   appId: process.env.VITE_APP_ID ?? "",
-  cookieSecret: process.env.JWT_SECRET ?? "",
-  databaseUrl: process.env.DATABASE_URL ?? "",
+  cookieSecret: process.env.JWT_SECRET ?? "meishu-qa-jwt-secret-2026",
+  databaseUrl: process.env.DATABASE_URL ?? "postgresql://neondb_owner:npg_knpNu8lB2FWR@ep-dry-glade-azg6pbwu-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require",
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
   ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
   isProduction: process.env.NODE_ENV === "production",

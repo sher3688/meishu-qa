@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist/static",
-  "installCommand": "npm install --legacy-peer-deps",
+  "installCommand": "rm -rf node_modules && npm install --legacy-peer-deps",
   "rewrites": [
     {
       "source": "/assets/(.*)",

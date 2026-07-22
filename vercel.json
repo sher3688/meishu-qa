@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server/index.mjs && node scripts/vercel-build.cjs && rm -rf node_modules/.pnpm/rollup* node_modules/.pnpm/@rollup* node_modules/vite node_modules/@vitejs node_modules/@tailwindcss node_modules/vitest 2>/dev/null; echo done",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist/static",
-  "installCommand": "pnpm install",
+  "installCommand": "npm install --legacy-peer-deps",
   "rewrites": [
     {
       "source": "/assets/(.*)",

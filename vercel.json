@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "buildCommand": "pnpm run build",
   "outputDirectory": "dist/static",
-  "installCommand": "rm -rf node_modules package-lock.json && npm install --include=dev",
+  "installCommand": "pnpm install",
   "rewrites": [
     {
       "source": "/assets/(.*)",

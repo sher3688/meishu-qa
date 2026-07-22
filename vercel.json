@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist/static",
-  "installCommand": "npm install",
+  "installCommand": "rm -rf node_modules && rm -rf /vercel/.cache && npm install --legacy-peer-deps --no-optional",
   "rewrites": [
     {
       "source": "/assets/(.*)",

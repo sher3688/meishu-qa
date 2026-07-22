@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "echo skipping build",
   "outputDirectory": "dist/static",
-  "installCommand": "echo skipping install",
+  "installCommand": "pnpm install --prod",
   "rewrites": [
     {
       "source": "/assets/(.*)",

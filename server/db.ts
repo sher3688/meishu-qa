@@ -10,7 +10,7 @@ let _db: ReturnType<typeof drizzle> | null = null;
 function getPool(): Pool {
   if (!_pool) {
     _pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: ENV.databaseUrl,
       ssl: { rejectUnauthorized: false },
       max: 5,
       idleTimeoutMillis: 30_000,
@@ -24,7 +24,7 @@ function getPool(): Pool {
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  if (!_db && ENV.databaseUrl) {
     try {
       _db = drizzle(getPool());
     } catch (error) {

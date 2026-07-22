@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "buildCommand": "echo skipping build",
   "outputDirectory": "dist/static",
-  "installCommand": "rm -rf node_modules package-lock.json && npm install --legacy-peer-deps",
+  "installCommand": "echo skipping install",
   "rewrites": [
     {
       "source": "/assets/(.*)",

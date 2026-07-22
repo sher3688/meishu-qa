@@ -1,10 +1,5 @@
-export default async function handler(req, res) {
-  try {
-    const { createApp } = await import("./server.mjs");
-    const app = createApp();
-    return app(req, res);
-  } catch (err) {
-    console.error("FULL ERROR STACK:", err.stack);
-    res.status(500).json({ error: err.message });
-  }
-}
+// Handler for Vercel serverless - imports the server bundle and creates the app
+import { createApp } from "./server.mjs";
+// Create the Express app (server.mjs's createApp handles all routes)
+const app = createApp();
+export default app;

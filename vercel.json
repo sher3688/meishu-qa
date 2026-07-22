@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist/static",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --no-optional",
   "rewrites": [
     {
       "source": "/assets/(.*)",

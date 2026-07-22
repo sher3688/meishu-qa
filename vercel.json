@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist/static",
-  "installCommand": "rm -rf node_modules package-lock.json && npm install --include=dev",
+  "installCommand": "rm -rf node_modules package-lock.json && npm install --include=dev && npm install @rollup/rollup-linux-x64-gnu",
   "rewrites": [
     {
       "source": "/assets/(.*)",

@@ -1,16 +1,6 @@
-import "dotenv/config";
-import express from "express";
 import { createServer } from "http";
 import net from "net";
-import multer from "multer";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerStorageProxy } from "./storageProxy";
-import { appRouter } from "../routers";
-import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
-import { storagePut } from "../storage";
-import { initializeDemoUsers } from "../password-auth";
-import { initializeSchema } from "../db";
+import { createApp, initializeApplicationData } from "../app";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -31,106 +21,19 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-let schemaInitialized = false;
-let demoUsersInitialized = false;
-
-async function ensureSchema() {
-  if (schemaInitialized) return;
-  schemaInitialized = true;
-  try {
-    await initializeSchema();
-    console.log("[Server] Database schema initialized");
-  } catch (error) {
-    console.error("[Server] Failed to initialize schema:", error);
-  }
-}
-
-async function ensureDemoUsers() {
-  if (demoUsersInitialized) return;
-  demoUsersInitialized = true;
-  try {
-    await initializeDemoUsers();
-    console.log("[Server] Demo users initialized");
-  } catch (error) {
-    console.error("[Server] Failed to initialize demo users:", error);
-  }
-}
-
-export function createApp(): express.Express {
-  const app = express();
-  // On Vercel, lazily initialize schema and demo users on first request
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    app.use(async (_req, _res, next) => {
-      if (!schemaInitialized) {
-        await ensureSchema();
-      }
-      if (!demoUsersInitialized) {
-        await ensureDemoUsers();
-      }
-      next();
-    });
-  }
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  registerStorageProxy(app);
-
-  // Configure multer for file uploads
-  const upload = multer({ storage: multer.memoryStorage() });
-
-  // Image upload endpoint
-  app.post("/api/upload", upload.single("file"), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file provided" });
-      }
-
-      const { originalname, buffer, mimetype } = req.file;
-      const fileExtension = originalname.split(".").pop();
-      const fileName = `faq-images/${Date.now()}.${fileExtension}`;
-
-      const { url } = await storagePut(fileName, buffer, mimetype);
-      res.json({ url });
-    } catch (error) {
-      console.error("Upload error:", error);
-      res.status(500).json({ error: "Upload failed" });
-    }
-  });
-
-  // tRPC API
-  app.use(
-    "/api/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
-  return app;
-}
-
 async function startServer() {
-  // Initialize schema and demo users
-  try {
-    await initializeSchema();
-    console.log("Database schema initialized");
-  } catch (error) {
-    console.error("Failed to initialize schema:", error);
-  }
-
-  try {
-    await initializeDemoUsers();
-    console.log("Demo users initialized successfully");
-  } catch (error) {
-    console.error("Failed to initialize demo users:", error);
-  }
+  await initializeApplicationData();
 
   const app = createApp();
   const server = createServer(app);
 
-  // development mode uses Vite, production mode uses static files
+  // Vite remains available for local development only. The Vercel function
+  // builds from server/vercel.ts and never imports this module.
   if (process.env.NODE_ENV === "development") {
+    const { setupVite } = await import("./vite");
     await setupVite(app, server);
   } else {
+    const { serveStatic } = await import("./vite");
     serveStatic(app);
   }
 

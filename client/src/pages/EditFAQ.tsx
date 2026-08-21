@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { categories } from "@/data/faqData";
 import { ArrowLeft, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { uploadFaqImage } from "@/lib/faqUpload";
 
 interface EditFAQProps {
   faqId: string;
@@ -230,18 +231,7 @@ export default function EditFAQ({ faqId }: EditFAQProps) {
                       try {
                         const uploadedUrls: string[] = [];
                         for (const file of files) {
-                          const formDataForUpload = new FormData();
-                          formDataForUpload.append('file', file);
-                          
-                          const response = await fetch('/api/upload', {
-                            method: 'POST',
-                            body: formDataForUpload,
-                          });
-                          
-                          if (response.ok) {
-                            const data = await response.json();
-                            uploadedUrls.push(data.url);
-                          }
+                          uploadedUrls.push(await uploadFaqImage(file));
                         }
                         
                         setFormData({
@@ -250,10 +240,11 @@ export default function EditFAQ({ faqId }: EditFAQProps) {
                         });
                         toast.success(`已上傳 ${uploadedUrls.length} 張圖片`);
                       } catch (error) {
-                        toast.error("圖片上傳失敗");
+                        toast.error(error instanceof Error ? error.message : "圖片上傳失敗");
                         console.error("Image upload failed:", error);
                       } finally {
                         setUploadingImages(false);
+                        e.currentTarget.value = "";
                       }
                     }}
                     className="hidden"

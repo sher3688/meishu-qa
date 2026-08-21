@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { categories } from "@/data/faqData";
 import { ArrowLeft, Plus, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { uploadFaqImage } from "@/lib/faqUpload";
 
 export default function AdminFAQ() {
   const [, setLocation] = useLocation();
@@ -177,19 +178,7 @@ export default function AdminFAQ() {
                         try {
                           const uploadedUrls: string[] = [];
                           for (const file of files) {
-                            const formDataForUpload = new FormData();
-                            formDataForUpload.append('file', file);
-                            
-                            // Upload to backend
-                            const response = await fetch('/api/upload', {
-                              method: 'POST',
-                              body: formDataForUpload,
-                            });
-                            
-                            if (response.ok) {
-                              const data = await response.json();
-                              uploadedUrls.push(data.url);
-                            }
+                            uploadedUrls.push(await uploadFaqImage(file));
                           }
                           
                           setFormData({
@@ -198,10 +187,11 @@ export default function AdminFAQ() {
                           });
                           toast.success(`已上傳 ${uploadedUrls.length} 張圖片`);
                         } catch (error) {
-                          toast.error("圖片上傳失敗");
+                          toast.error(error instanceof Error ? error.message : "圖片上傳失敗");
                           console.error("Image upload failed:", error);
                         } finally {
                           setUploadingImages(false);
+                          e.currentTarget.value = "";
                         }
                       }}
                       className="hidden"

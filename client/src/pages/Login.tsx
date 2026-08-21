@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { BookOpen, AlertCircle } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function Login() {
@@ -46,25 +46,32 @@ function LoginForm() {
       // 登入成功，儲存 JWT token 到 localStorage
       localStorage.setItem("passwordAuthToken", data.token || String(data.id));
       localStorage.setItem("passwordAuthUser", JSON.stringify(data));
+
       // 觸發自定義事件，通知 useAuth hook 更新
-      window.dispatchEvent(new Event('passwordAuthUserChanged'));
+      window.dispatchEvent(new Event("passwordAuthUserChanged"));
+
       toast.success("登入成功");
+
       // 清除表單
       setUsername("");
       setPassword("");
       setLoading(false);
+
       // 延遲導航到首頁，讓所有狀態重新初始化
       setTimeout(() => {
         setLocation("/");
       }, 500);
     },
+
     onError: (error: any) => {
-      const errorMsg = error?.data?.zodError 
+      const errorMsg = error?.data?.zodError
         ? Object.values(error.data.zodError).flat().join(", ")
         : error.message || "登入失敗";
+
       toast.error(errorMsg);
       setLoading(false);
     },
+
     onSettled: () => {
       setLoading(false);
     },
@@ -72,10 +79,12 @@ function LoginForm() {
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!username || !password) {
       toast.error("請輸入使用者名稱和密碼");
       return;
     }
+
     setLoading(true);
     loginMutation.mutate({ username, password });
   };
@@ -89,15 +98,21 @@ function LoginForm() {
               <BookOpen className="w-6 h-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center">美樹大悅社區問答系統</CardTitle>
+
+          <CardTitle className="text-2xl text-center">
+            美樹大悅社區問答系統
+          </CardTitle>
+
           <CardDescription className="text-center">
             請輸入帳號密碼登入
           </CardDescription>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={handlePasswordLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">使用者名稱</Label>
+
               <Input
                 id="username"
                 type="text"
@@ -108,8 +123,10 @@ function LoginForm() {
                 autoComplete="username"
               />
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="password">密碼</Label>
+
               <Input
                 id="password"
                 type="password"
@@ -120,6 +137,7 @@ function LoginForm() {
                 autoComplete="current-password"
               />
             </div>
+
             <Button
               type="submit"
               className="w-full"
@@ -127,14 +145,6 @@ function LoginForm() {
             >
               {loading ? "登入中..." : "登入"}
             </Button>
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-700">
-                <p className="font-semibold mb-2">預設帳號：</p>
-                <p className="text-xs">帳號：admin</p>
-                <p className="text-xs">密碼：admin123</p>
-              </div>
-            </div>
           </form>
         </CardContent>
       </Card>

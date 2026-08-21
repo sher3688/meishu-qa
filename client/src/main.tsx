@@ -48,6 +48,10 @@ const trpcClient = trpc.createClient({
         // session into sessionStorage so we can forward it as a Bearer token.
         // The regular OAuth cookie flow keeps working and takes priority server-side.
         try {
+          const passwordToken = localStorage.getItem("passwordAuthToken");
+          if (passwordToken) {
+            return { Authorization: `Bearer ${passwordToken}` };
+          }
           const raw = sessionStorage.getItem("manus-cookie");
           if (raw) {
             const prefix = `${COOKIE_NAME}=`;
@@ -58,7 +62,7 @@ const trpcClient = trpc.createClient({
             }
           }
         } catch {
-          // sessionStorage unavailable
+          // Browser storage unavailable
         }
         return {};
       },

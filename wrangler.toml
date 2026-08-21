@@ -7,3 +7,8 @@ directory = "./dist/public"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "meishu-qa-db"
+database_id = "a4e3312a-8eff-43e1-931b-dd59dfe40907"
